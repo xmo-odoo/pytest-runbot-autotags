@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytest-runbot-autotags"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pytest>=7.0",
+    "pytest-odoo",
+]
+classifiers = [
+    "Framework :: Pytest",
+]
+
+[project.entry-points.pytest11]
+pytest_runbot_autotags = "pytest_runbot_autotags"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+format.quote-style = "preserve"
+format.skip-magic-trailing-comma = true
