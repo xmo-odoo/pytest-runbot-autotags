@@ -1,7 +1,10 @@
 import inspect
+import json
 import re
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
+from json import JSONDecodeError
 from typing import Callable
 
 import pytest
@@ -30,17 +33,26 @@ def pytest_configure(config: pytest.Config):
         return
 
     config.stash[Tags] = []
+    # TODO: have runbot provide more useful cache headers so we don't need
+    #       to read & parse the body if the version we have is still valid?
     try:
-        # TODO: have runbot provide more useful cache headers so we don't need
-        #       to read & parse the body if the version we have is still valid?
-        r = urllib.request.urlopen("https://runbot.odoo.com/runbot/auto-tags", timeout=1)
-    except (TimeoutError, urllib.error.URLError):
+        with urllib.request.urlopen("https://runbot.odoo.com/runbot/json/last_batches_infos?bundle_name=master", timeout=1) as r:
+            data = json.load(r)
+            taglines = data['master'].get('autotags', [])
+    except (TimeoutError, urllib.error.URLError, JSONDecodeError):
+        try:
+            with urllib.request.urlopen("https://runbot.odoo.com/runbot/auto-tags", timeout=1) as r:
+                taglines = r.read().decode().strip().split(',')
+        except (ImportError, urllib.error.URLError):
+            taglines = None
+    # TODO: hash taglines consistently (e.g. sort) and check if we need to parse the things or can just get the cache?
+    if taglines is None:
         predicates, tags = config.cache.get('autotags/auto-tags', ([], []))
     else:
         predicates = []
         tags = []
         # ignore match failure as technically the runbot *could* use an actual tag(ged)
-        for m in filter(None, map(tag_re.fullmatch, r.read().decode().strip().split(','))):
+        for m in filter(None, map(tag_re.fullmatch, taglines)):
             pred = []
             if n := m['method']:
                 pred.append(f'fn.__name__ == {n!r}')
